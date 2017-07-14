@@ -1,5 +1,43 @@
 apply plugin: 'com.android.library'
-apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'maven-publish'
+task sourceJar(type: Jar) {
+    classifier "sources"
+    from android.sourceSets.main.java.srcDirs
+}
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifact sourceJar
+            artifact bundleRelease
+            //The publication doesn't know about our dependencies, so we have to manually add them to the pom
+
+            pom.withXml {
+                // for dependencies and exclusions
+
+                def dependencies = asNode().appendNode('dependencies')
+                configurations.compile.allDependencies.each {
+                    if (it.group?.length() > 0) {
+                        def dependency = dependencies.appendNode('dependency')
+                        dependency.appendNode('groupId', it.group)
+                        dependency.appendNode('artifactId', it.name)
+                        dependency.appendNode('version', it.version)
+                        // for exclusions
+
+                        if (it.getExcludeRules()?.size() > 0) {
+                            def exclusions = dependency.appendNode('exclusions')
+                            it.getExcludeRules()?.each {
+                                def exclusion = exclusions.appendNode('exclusion')
+                                exclusion.appendNode('groupId', it.group)
+                                exclusion.appendNode('artifactId', it.module)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 android {
     compileSdkVersion 25
     buildToolsVersion '25.0.3'
@@ -42,4 +80,8 @@ dependencies {
     compile 'com.amap.api:location:latest.integration'
     compile 'com.amap.api:map2d:latest.integration'
     compile 'com.amap.api:search:latest.integration'
+    testCompile 'junit:junit:4.12'
+    testCompile 'net.sf.json-lib:json-lib:2.4:jdk15'
+    testCompile 'xom:xom:1.2.5'
+    testCompile 'org.json:json:20160810'
 }
